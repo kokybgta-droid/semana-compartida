@@ -1,0 +1,604 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Semana Compartida</title>
+<meta name="theme-color" content="#0f766e">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+:root{
+  --bg:#f6f4ef; --card:#ffffff; --ink:#1f2933; --muted:#6b7280; --line:#e7e2d8;
+  --brand:#0f766e; --brand-ink:#ffffff; --danger:#b91c1c; --ok:#15803d;
+  --a:#2563eb; --b:#db2777; --radius:16px;
+  --shadow:0 1px 2px rgba(0,0,0,.05),0 4px 14px rgba(0,0,0,.05);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --bg:#14181c; --card:#1d2328; --ink:#e8eaed; --muted:#9aa3ad; --line:#2c343b; --brand:#2dd4bf; --brand-ink:#06201d; }
+}
+:root[data-theme="dark"]{ --bg:#14181c; --card:#1d2328; --ink:#e8eaed; --muted:#9aa3ad; --line:#2c343b; --brand:#2dd4bf; --brand-ink:#06201d; }
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Nunito,system-ui,sans-serif;font-size:16px;-webkit-tap-highlight-color:transparent}
+body{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+button,input,select,textarea{font:inherit;color:inherit}
+.wrap{max-width:720px;margin:0 auto;padding:0 16px}
+header.top{position:sticky;top:0;z-index:5;background:var(--bg);padding:calc(10px + env(safe-area-inset-top)) 0 8px}
+header.top .wrap{display:flex;align-items:center;gap:10px}
+header.top h1{font-size:1.15rem;margin:0;font-weight:800;flex:1}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 10px;font-weight:700;font-size:.85rem;color:#fff}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;margin:12px 0}
+.muted{color:var(--muted)}
+.row{display:flex;gap:8px;align-items:center}
+.grow{flex:1}
+.btn{border:0;border-radius:12px;padding:11px 16px;font-weight:700;background:var(--brand);color:var(--brand-ink);cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.danger{background:transparent;color:var(--danger);border:1px solid var(--line)}
+.btn.small{padding:7px 11px;font-size:.9rem}
+.btn:disabled{opacity:.5}
+.icon-btn{border:1px solid var(--line);background:var(--card);border-radius:12px;width:40px;height:40px;display:grid;place-items:center;cursor:pointer}
+label{display:block;font-weight:700;font-size:.9rem;margin:10px 0 4px}
+input,select,textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+textarea{min-height:90px;resize:vertical}
+.check{display:flex;align-items:center;gap:8px;font-weight:600;margin-top:10px}
+.check input{width:auto}
+
+/* calendario */
+.cal-head{display:flex;align-items:center;gap:8px;margin-top:4px}
+.cal-head h2{flex:1;text-align:center;margin:0;font-size:1.1rem}
+.dow{display:grid;grid-template-columns:6px repeat(7,1fr);gap:4px;margin-top:10px;font-size:.75rem;color:var(--muted);text-align:center;font-weight:700}
+.week{display:grid;grid-template-columns:6px repeat(7,1fr);gap:4px;margin-top:4px}
+.week .bar{border-radius:4px}
+.day{background:var(--card);border:1px solid var(--line);border-radius:10px;min-height:56px;padding:4px;cursor:pointer;position:relative;text-align:left}
+.day .n{font-weight:800;font-size:.85rem}
+.day.out{opacity:.4}
+.day.today{outline:2px solid var(--brand);outline-offset:-2px}
+.day .tint{position:absolute;inset:0;border-radius:9px;opacity:.10;pointer-events:none}
+.dots{display:flex;flex-wrap:wrap;gap:2px;margin-top:3px}
+.dot{width:7px;height:7px;border-radius:50%}
+.legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;font-size:.85rem}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.sw{width:12px;height:12px;border-radius:4px;display:inline-block}
+
+.cat-medico{background:#dc2626}.cat-terapia{background:#7c3aed}.cat-colegio{background:#ea580c}.cat-actividad{background:#16a34a}.cat-otro{background:#64748b}
+.list-item{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line)}
+.list-item:first-child{border-top:0}
+.list-item .tag{font-size:.75rem;font-weight:800;color:#fff;border-radius:6px;padding:2px 6px;white-space:nowrap}
+.amount{font-weight:800;white-space:nowrap}
+
+.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:10}
+.tabs .wrap{display:grid;grid-template-columns:repeat(5,1fr)}
+.tabs button{background:none;border:0;padding:8px 2px 10px;font-size:.72rem;font-weight:700;color:var(--muted);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+.tabs button .ic{font-size:1.3rem;line-height:1}
+.tabs button.on{color:var(--brand)}
+
+.fab{position:fixed;right:16px;bottom:calc(88px + env(safe-area-inset-bottom));width:56px;height:56px;border-radius:18px;border:0;background:var(--brand);color:var(--brand-ink);font-size:1.8rem;box-shadow:0 6px 18px rgba(0,0,0,.2);cursor:pointer;z-index:9}
+
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:20;display:none}
+.sheet{position:fixed;left:0;right:0;bottom:0;max-height:90vh;overflow:auto;background:var(--card);border-radius:20px 20px 0 0;z-index:21;padding:16px 16px calc(20px + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .2s}
+.sheet.open{transform:none}
+.sheet-bg.open{display:block}
+.sheet .inner{max-width:680px;margin:0 auto}
+.sheet h3{margin:0 0 6px}
+.grabber{width:40px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 10px}
+
+.login{min-height:100vh;display:grid;place-items:center;padding:24px}
+.login .box{max-width:380px;width:100%;text-align:center}
+.login h1{font-size:1.7rem;margin:12px 0 4px}
+.gbtn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;background:#fff;color:#1f1f1f;border:1px solid #dadce0;border-radius:12px;padding:12px;font-weight:700;cursor:pointer;margin-top:18px}
+.toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:700;z-index:50;display:none;max-width:90vw}
+.summary{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.summary .box{border-radius:12px;padding:10px;color:#fff}
+.summary .box b{display:block;font-size:1.2rem}
+.balance{margin-top:10px;padding:10px;border-radius:12px;background:var(--bg);font-weight:700}
+.kind-h{font-size:.85rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:14px 0 2px;font-weight:800}
+.moods{display:flex;gap:6px}
+.moods button{flex:1;font-size:1.5rem;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:6px;cursor:pointer}
+.moods button.on{border-color:var(--brand);background:color-mix(in srgb,var(--brand) 15%,transparent)}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div id="toast" class="toast"></div>
+
+<!-- LOGIN -->
+<section id="v-login" class="login hidden">
+  <div class="box">
+    <img src="icon.svg" width="72" height="72" alt="">
+    <h1>Semana Compartida</h1>
+    <p class="muted">Calendario, citas y gastos de nuestro hijo, entre las dos casas.</p>
+    <form id="f-login" style="text-align:left;margin-top:18px">
+      <label for="mail">Correo</label>
+      <input id="mail" type="email" autocomplete="email" placeholder="tu@correo.com" required>
+      <label for="pass">Clave</label>
+      <input id="pass" type="password" autocomplete="current-password" placeholder="Mínimo 6 caracteres" minlength="6" required>
+      <div id="pass2-wrap" class="hidden"><label for="pass2">Repite la clave</label>
+      <input id="pass2" type="password" autocomplete="new-password" minlength="6"></div>
+      <button class="btn" id="btn-login" type="submit" style="width:100%;margin-top:16px">Entrar</button>
+    </form>
+    <p class="muted" style="margin-top:16px"><span id="mode-q">¿Primera vez?</span>
+      <a href="#" id="btn-mode" style="color:var(--brand);font-weight:700">Crear cuenta</a></p>
+  </div>
+</section>
+
+<!-- ONBOARDING -->
+<section id="v-setup" class="hidden">
+  <div class="wrap">
+    <header class="top"><div class="wrap" style="padding:0"><h1>Configurar</h1></div></header>
+    <div class="card">
+      <b>¿Te invitaron?</b>
+      <p class="muted" style="margin:4px 0 0;font-size:.9rem">Escribe el código de 6 letras que te dieron. Debe haberse invitado este mismo correo: <b id="my-email"></b></p>
+      <div class="row" style="margin-top:8px"><input id="j-code" maxlength="6" placeholder="ABC123" style="text-transform:uppercase;letter-spacing:.15em;font-weight:800" autocapitalize="characters">
+      <button class="btn" id="btn-join">Unirme</button></div>
+    </div>
+    <p class="muted" style="text-align:center;margin:4px 0">— o, si eres el primero —</p>
+    <div class="card">
+      <b>Crear el calendario</b>
+      <label>Nombre de tu hijo/a</label><input id="s-child" required>
+      <label>Fecha de nacimiento</label><input id="s-birth" type="date">
+      <label>Día de cambio de casa</label>
+      <select id="s-swap"></select>
+      <label>¿Con quién está esta semana?</label>
+      <select id="s-mine"><option value="me">Conmigo</option><option value="other">Con la otra casa</option></select>
+      <label>Cómo te llamamos</label><input id="s-myname" placeholder="Papá">
+      <label>Tu color</label><input id="s-mycolor" type="color" value="#2563eb">
+      <hr style="border:0;border-top:1px solid var(--line);margin:18px 0 6px">
+      <label>Correo de la otra persona</label><input id="s-oemail" type="email" placeholder="ella@correo.com">
+      <label>Cómo la llamamos</label><input id="s-oname" placeholder="Mamá">
+      <label>Su color</label><input id="s-ocolor" type="color" value="#db2777">
+      <button class="btn" id="btn-setup" style="width:100%;margin-top:16px">Crear calendario</button>
+    </div>
+    <button class="btn ghost" onclick="logout()" style="width:100%">Cerrar sesión</button>
+  </div>
+</section>
+
+<!-- APP -->
+<section id="v-app" class="hidden">
+  <header class="top"><div class="wrap">
+    <h1 id="title">Semana Compartida</h1>
+    <span id="now-pill" class="pill"></span>
+  </div></header>
+  <main class="wrap" id="main"></main>
+  <button class="fab" id="fab" aria-label="Agregar">+</button>
+  <nav class="tabs"><div class="wrap">
+    <button data-tab="cal" class="on"><span class="ic">📅</span>Calendario</button>
+    <button data-tab="gastos"><span class="ic">💵</span>Gastos</button>
+    <button data-tab="ficha"><span class="ic">🧩</span>Ficha</button>
+    <button data-tab="bitacora"><span class="ic">📝</span>Bitácora</button>
+    <button data-tab="ajustes"><span class="ic">⚙️</span>Ajustes</button>
+  </div></nav>
+</section>
+
+<div class="sheet-bg" id="sheet-bg"></div>
+<div class="sheet" id="sheet"><div class="inner"><div class="grabber"></div><div id="sheet-body"></div></div></div>
+
+<script>
+// ====== CONFIG ======
+const SUPABASE_URL = 'https://tfemsghfhurvrphjmqgb.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_1Iyt-nzIeJNrERMpT0HkHg_tNHl13dd';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ====== ESTADO ======
+const S = { user:null, fam:null, members:[], me:null, other:null, overrides:{}, tab:'cal', month:startOfMonth(new Date()), gMonth:startOfMonth(new Date()), events:[], expenses:[], items:[], log:[] };
+const DOW = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+const CATS = {medico:'Médico',terapia:'Terapia',colegio:'Colegio',actividad:'Actividad',otro:'Otro'};
+const ECATS = {salud:'Salud',terapia:'Terapia',colegio:'Colegio',ropa:'Ropa',alimentacion:'Alimentación',actividad:'Actividad',otro:'Otro'};
+const KINDS = {medicamento:'Medicamentos',rutina:'Rutinas',ayuda:'Lo que le ayuda',evitar:'Lo que lo desregula',contacto:'Contactos (médicos, terapeutas)',otro:'Otros'};
+const MOODS = ['😣','🙁','😐','🙂','😄'];
+
+// ====== UTILES ======
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(m){ const t=$('#toast'); t.textContent=m; t.style.display='block'; clearTimeout(t._h); t._h=setTimeout(()=>t.style.display='none',2600); }
+function ymd(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function parseYmd(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
+function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
+function startOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
+function weekStart(d, wd){ const x=new Date(d.getFullYear(),d.getMonth(),d.getDate()); const diff=(x.getDay()-wd+7)%7; return addDays(x,-diff); }
+function daysBetween(a,b){ return Math.round((Date.UTC(b.getFullYear(),b.getMonth(),b.getDate())-Date.UTC(a.getFullYear(),a.getMonth(),a.getDate()))/864e5); }
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+const clp = n => '$' + Math.round(Number(n)||0).toLocaleString('es-CL');
+const fmtDate = (d,o) => d.toLocaleDateString('es-CL', o||{weekday:'short',day:'numeric',month:'short'});
+const fmtTime = d => d.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'});
+function sideOf(date){
+  const ws = weekStart(date, S.fam.swap_weekday);
+  const key = ymd(ws);
+  if (S.overrides[key]) return S.overrides[key];
+  const anchor = weekStart(parseYmd(S.fam.anchor_date), S.fam.swap_weekday);
+  const w = Math.floor(daysBetween(anchor, ws)/7);
+  return (((w%2)+2)%2)===0 ? 'A' : 'B';
+}
+const mem = side => S.members.find(m=>m.side===side) || {display_name: side==='A'?'Casa A':'Casa B', color: side==='A'?'#2563eb':'#db2777'};
+function localInput(d){ const p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; }
+async function run(p){ const {data,error}=await p; if(error){ console.error(error); toast('Error: '+error.message); throw error; } return data; }
+
+// ====== AUTH ======
+let signup = false;
+$('#btn-mode').onclick = ev => { ev.preventDefault(); signup = !signup;
+  $('#pass2-wrap').classList.toggle('hidden', !signup);
+  $('#btn-login').textContent = signup ? 'Crear cuenta' : 'Entrar';
+  $('#mode-q').textContent = signup ? '¿Ya tienes cuenta?' : '¿Primera vez?';
+  $('#btn-mode').textContent = signup ? 'Entrar' : 'Crear cuenta';
+  $('#pass').autocomplete = signup ? 'new-password' : 'current-password';
+};
+const AUTH_ERR = { 'Invalid login credentials':'Correo o clave incorrectos', 'User already registered':'Ese correo ya tiene cuenta: usa "Entrar"', 'Email not confirmed':'Falta confirmar el correo (revisa la configuración de Supabase)' };
+$('#f-login').onsubmit = async ev => {
+  ev.preventDefault();
+  const email = $('#mail').value.trim().toLowerCase(), password = $('#pass').value;
+  if(signup && password !== $('#pass2').value) return toast('Las claves no coinciden');
+  const btn = $('#btn-login'); btn.disabled = true;
+  try{
+    let res = signup ? await sb.auth.signUp({ email, password }) : await sb.auth.signInWithPassword({ email, password });
+    if(res.error) return toast(AUTH_ERR[res.error.message] || res.error.message);
+    if(signup && !res.data.session){
+      res = await sb.auth.signInWithPassword({ email, password });
+      if(res.error) return toast(AUTH_ERR[res.error.message] || res.error.message);
+    }
+    boot();
+  } finally { btn.disabled = false; }
+};
+async function logout(){ await sb.auth.signOut(); location.reload(); }
+
+function show(v){ ['login','setup','app'].forEach(x=>$('#v-'+x).classList.toggle('hidden', x!==v)); }
+
+async function boot(){
+  const { data:{ session } } = await sb.auth.getSession();
+  if(!session){ show('login'); return; }
+  S.user = session.user;
+  const mine = await run(sb.from('family_members').select('family_id').eq('user_id', S.user.id).limit(1));
+  if(!mine.length){ setupView(); return; }
+  await loadFamily(mine[0].family_id);
+  show('app'); render();
+}
+$('#btn-join').onclick = async () => {
+  const code = $('#j-code').value.trim().toUpperCase(); if(code.length < 6) return toast('El código tiene 6 caracteres');
+  const n = await run(sb.rpc('claim_invite', { p_code: code }));
+  if(!n) return toast('Código o correo no coinciden con la invitación');
+  toast('¡Bienvenida/o!'); boot();
+};
+function showCode(code){
+  openSheet(`<h3>Código de invitación</h3>
+    <p>Envíale a la otra persona el enlace de la app y este código. Debe crear su cuenta con el correo que escribiste.</p>
+    <div style="font-size:2rem;font-weight:800;letter-spacing:.2em;text-align:center;padding:14px;border:2px dashed var(--line);border-radius:14px">${esc(code)}</div>
+    <button class="btn" style="width:100%;margin-top:14px" onclick="shareInvite('${esc(code)}')">Compartir</button>`);
+}
+async function shareInvite(code){
+  const text = `Te invité a Semana Compartida para coordinar a ${S.fam?.child_name||'nuestro hijo'}. Entra a ${location.origin+location.pathname}, crea tu cuenta con este correo y usa el código ${code}`;
+  try { if(navigator.share) await navigator.share({ text }); else { await navigator.clipboard.writeText(text); toast('Mensaje copiado'); } } catch(e){}
+}
+
+function setupView(){
+  show('setup');
+  $('#my-email').textContent = S.user.email;
+  $('#s-swap').innerHTML = DOW.map((d,i)=>`<option value="${i}" ${i===1?'selected':''}>${d}</option>`).join('');
+  $('#s-myname').value = (S.user.user_metadata?.full_name||'').split(' ')[0] || '';
+}
+$('#btn-setup').onclick = async () => {
+  const child = $('#s-child').value.trim(); if(!child) return toast('Falta el nombre');
+  const wd = +$('#s-swap').value;
+  let anchor = weekStart(new Date(), wd);
+  if($('#s-mine').value==='other') anchor = addDays(anchor, 7);
+  const fid = await run(sb.rpc('create_family', { p_child_name: child, p_birthdate: $('#s-birth').value || null, p_swap_weekday: wd, p_anchor: ymd(anchor), p_my_name: $('#s-myname').value.trim()||'Yo', p_my_color: $('#s-mycolor').value }));
+  const oe = $('#s-oemail').value.trim();
+  let code = null;
+  if(oe) code = await run(sb.rpc('invite_member', { p_family: fid, p_email: oe, p_name: $('#s-oname').value.trim()||'Otra casa', p_color: $('#s-ocolor').value }));
+  await loadFamily(fid); show('app'); render(); toast('¡Listo!');
+  if(code) showCode(code);
+};
+
+async function loadFamily(fid){
+  S.fam = (await run(sb.from('families').select('*').eq('id', fid).single()));
+  S.members = await run(sb.from('family_members').select('*').eq('family_id', fid));
+  S.me = S.members.find(m=>m.user_id===S.user.id);
+  S.other = S.members.find(m=>m!==S.me);
+  const ov = await run(sb.from('week_overrides').select('*').eq('family_id', fid));
+  S.overrides = Object.fromEntries(ov.map(o=>[o.week_start, o.side]));
+  document.documentElement.style.setProperty('--a', mem('A').color);
+  document.documentElement.style.setProperty('--b', mem('B').color);
+  $('#title').textContent = S.fam.child_name;
+  const s = sideOf(new Date()); const m = mem(s);
+  $('#now-pill').textContent = 'Esta semana: ' + m.display_name; $('#now-pill').style.background = m.color;
+}
+
+// ====== NAVEGACIÓN ======
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { S.tab=b.dataset.tab; document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b)); render(); window.scrollTo(0,0); });
+$('#fab').onclick = () => ({cal:()=>eventForm(), gastos:()=>expenseForm(), ficha:()=>itemForm(), bitacora:()=>logForm()}[S.tab]||(()=>{}))();
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden && S.fam) render(); });
+
+function render(){
+  $('#fab').classList.toggle('hidden', S.tab==='ajustes');
+  ({cal:renderCal, gastos:renderGastos, ficha:renderFicha, bitacora:renderLog, ajustes:renderAjustes})[S.tab]();
+}
+
+// ====== SHEET ======
+function openSheet(html){ $('#sheet-body').innerHTML = html; $('#sheet').classList.add('open'); $('#sheet-bg').classList.add('open'); }
+function closeSheet(){ $('#sheet').classList.remove('open'); $('#sheet-bg').classList.remove('open'); }
+$('#sheet-bg').onclick = closeSheet;
+
+// ====== CALENDARIO ======
+async function renderCal(){
+  const wd = S.fam.swap_weekday;
+  const first = weekStart(S.month, wd);
+  const lastOfMonth = new Date(S.month.getFullYear(), S.month.getMonth()+1, 0);
+  const end = addDays(weekStart(lastOfMonth, wd), 7);
+  S.events = await run(sb.from('events').select('*').eq('family_id', S.fam.id).gte('starts_at', first.toISOString()).lt('starts_at', end.toISOString()).order('starts_at'));
+  const upcoming = await run(sb.from('events').select('*').eq('family_id', S.fam.id).gte('starts_at', new Date().toISOString()).order('starts_at').limit(8));
+
+  const byDay = {};
+  S.events.forEach(e => { const k = ymd(new Date(e.starts_at)); (byDay[k] ||= []).push(e); });
+  const today = ymd(new Date());
+  let weeks = '';
+  for(let ws = first; ws < end; ws = addDays(ws,7)){
+    const side = sideOf(ws); const color = mem(side).color;
+    let cells = `<div class="bar" style="background:${color}"></div>`;
+    for(let i=0;i<7;i++){
+      const d = addDays(ws,i), k = ymd(d), evs = byDay[k]||[];
+      cells += `<button class="day ${d.getMonth()!==S.month.getMonth()?'out':''} ${k===today?'today':''}" onclick="dayView('${k}')">
+        <div class="tint" style="background:${color}"></div>
+        <div class="n">${d.getDate()}</div>
+        <div class="dots">${evs.slice(0,6).map(e=>`<span class="dot cat-${e.category}"></span>`).join('')}</div></button>`;
+    }
+    weeks += `<div class="week">${cells}</div>`;
+  }
+  const dows = Array.from({length:7},(_,i)=>DOW[(wd+i)%7].slice(0,2)).map(x=>`<div>${x}</div>`).join('');
+  const monthName = cap(S.month.toLocaleDateString('es-CL',{month:'long',year:'numeric'}));
+  $('#main').innerHTML = `
+    <div class="cal-head">
+      <button class="icon-btn" onclick="S.month=new Date(S.month.getFullYear(),S.month.getMonth()-1,1);renderCal()">‹</button>
+      <h2>${monthName}</h2>
+      <button class="icon-btn" onclick="S.month=new Date(S.month.getFullYear(),S.month.getMonth()+1,1);renderCal()">›</button>
+    </div>
+    <div class="dow"><div></div>${dows}</div>
+    ${weeks}
+    <div class="legend">
+      <span><i class="sw" style="background:${mem('A').color}"></i>${esc(mem('A').display_name)}</span>
+      <span><i class="sw" style="background:${mem('B').color}"></i>${esc(mem('B').display_name)}</span>
+      ${Object.entries(CATS).map(([k,v])=>`<span><i class="dot cat-${k}"></i>${v}</span>`).join('')}
+    </div>
+    <div class="card"><b>Próximas citas</b>
+      ${upcoming.length ? upcoming.map(eventRow).join('') : '<p class="muted">Sin citas próximas. Toca + para agregar.</p>'}
+    </div>`;
+}
+function eventRow(e){
+  const d = new Date(e.starts_at); const side = sideOf(d);
+  const resp = e.responsible==='ambos' ? 'Ambos' : e.responsible ? mem(e.responsible).display_name : mem(side).display_name;
+  return `<div class="list-item" onclick="eventForm('${e.id}')" style="cursor:pointer">
+    <span class="tag cat-${e.category}">${CATS[e.category]}</span>
+    <div class="grow"><b>${esc(e.title)}</b><div class="muted" style="font-size:.88rem">${fmtDate(d)} · ${fmtTime(d)}${e.location?' · '+esc(e.location):''}</div>
+    <div class="muted" style="font-size:.82rem">Lleva: ${esc(resp)}</div></div></div>`;
+}
+function dayView(k){
+  const d = parseYmd(k); const evs = S.events.filter(e=>ymd(new Date(e.starts_at))===k);
+  const side = sideOf(d); const ws = ymd(weekStart(d, S.fam.swap_weekday));
+  const other = side==='A'?'B':'A';
+  openSheet(`<h3 style="text-transform:capitalize">${fmtDate(d,{weekday:'long',day:'numeric',month:'long'})}</h3>
+    <p><span class="pill" style="background:${mem(side).color}">Con ${esc(mem(side).display_name)}</span></p>
+    ${evs.length ? evs.map(eventRow).join('') : '<p class="muted">Sin citas este día.</p>'}
+    <div class="row" style="margin-top:14px;flex-wrap:wrap">
+      <button class="btn" onclick="eventForm(null,'${k}')">+ Agregar cita</button>
+      <button class="btn ghost" onclick="swapWeek('${ws}','${other}')">Esta semana con ${esc(mem(other).display_name)}</button>
+      ${S.overrides[ws]?`<button class="btn ghost" onclick="resetWeek('${ws}')">Volver a lo normal</button>`:''}
+    </div>`);
+}
+async function swapWeek(ws, side){
+  if(!confirm(`¿Cambiar la semana del ${fmtDate(parseYmd(ws))} para que esté con ${mem(side).display_name}?`)) return;
+  await run(sb.from('week_overrides').upsert({ family_id:S.fam.id, week_start:ws, side }));
+  S.overrides[ws]=side; closeSheet(); await loadFamily(S.fam.id); renderCal(); toast('Semana cambiada');
+}
+async function resetWeek(ws){
+  await run(sb.from('week_overrides').delete().eq('family_id',S.fam.id).eq('week_start',ws));
+  delete S.overrides[ws]; closeSheet(); await loadFamily(S.fam.id); renderCal();
+}
+async function eventForm(id, dayKey){
+  let e = id ? (await run(sb.from('events').select('*').eq('id',id).single())) : null;
+  const start = e ? new Date(e.starts_at) : (dayKey ? Object.assign(parseYmd(dayKey),{}) : new Date());
+  if(!e){ start.setHours(dayKey?10:start.getHours()+1, 0, 0, 0); }
+  openSheet(`<h3>${e?'Editar cita':'Nueva cita'}</h3>
+    <label>Qué</label><input id="f-title" value="${esc(e?.title)}" placeholder="Terapia ocupacional">
+    <label>Tipo</label><select id="f-cat">${Object.entries(CATS).map(([k,v])=>`<option value="${k}" ${e?.category===k?'selected':''}>${v}</option>`).join('')}</select>
+    <label>Cuándo</label><input id="f-start" type="datetime-local" value="${localInput(start)}">
+    <label>Dónde</label><input id="f-loc" value="${esc(e?.location)}" placeholder="CESFAM, consulta…">
+    <label>Quién lo lleva</label><select id="f-resp">
+      <option value="">Quien tenga la semana</option>
+      <option value="A" ${e?.responsible==='A'?'selected':''}>${esc(mem('A').display_name)}</option>
+      <option value="B" ${e?.responsible==='B'?'selected':''}>${esc(mem('B').display_name)}</option>
+      <option value="ambos" ${e?.responsible==='ambos'?'selected':''}>Ambos</option></select>
+    <label>Notas</label><textarea id="f-notes" placeholder="Qué llevar, indicaciones, cómo le fue…">${esc(e?.notes)}</textarea>
+    <label class="check"><input type="checkbox" id="f-repeat"> Repetir semanalmente (próximas 8 semanas)</label>
+    <div class="row" style="margin-top:14px">
+      ${e?`<button class="btn danger" onclick="delEvent('${e.id}')">Eliminar</button>`:''}
+      <span class="grow"></span><button class="btn" onclick="saveEvent(${e?`'${e.id}'`:'null'})">Guardar</button></div>`);
+  if(e) $('#f-repeat').parentElement.classList.add('hidden');
+}
+async function saveEvent(id){
+  const title = $('#f-title').value.trim(); if(!title) return toast('Falta el título');
+  const base = new Date($('#f-start').value);
+  const row = { family_id:S.fam.id, title, category:$('#f-cat').value, location:$('#f-loc').value.trim()||null, notes:$('#f-notes').value.trim()||null, responsible:$('#f-resp').value||null };
+  if(id) await run(sb.from('events').update({...row, starts_at: base.toISOString()}).eq('id',id));
+  else {
+    const n = $('#f-repeat').checked ? 8 : 1;
+    await run(sb.from('events').insert(Array.from({length:n},(_,i)=>({...row, starts_at:addDays(base,7*i).toISOString()}))));
+  }
+  closeSheet(); renderCal(); toast('Guardado');
+}
+async function delEvent(id){ if(!confirm('¿Eliminar esta cita?')) return; await run(sb.from('events').delete().eq('id',id)); closeSheet(); renderCal(); }
+
+// ====== GASTOS ======
+async function renderGastos(){
+  const a = S.gMonth, b = new Date(a.getFullYear(), a.getMonth()+1, 1);
+  S.expenses = await run(sb.from('expenses').select('*').eq('family_id',S.fam.id).gte('spent_on',ymd(a)).lt('spent_on',ymd(b)).order('spent_on',{ascending:false}));
+  const pending = await run(sb.from('expenses').select('amount,paid_by,share_a_pct').eq('family_id',S.fam.id).eq('shared',true).eq('settled',false));
+  const tot = {A:0,B:0}; S.expenses.forEach(e=>tot[e.paid_by]+=Number(e.amount));
+  // saldo: positivo = B le debe a A
+  let bal = 0; pending.forEach(e=>{ const shareA = e.amount*e.share_a_pct/100; bal += e.paid_by==='A' ? (e.amount-shareA) : -shareA; });
+  const balTxt = Math.abs(bal)<1 ? 'Gastos compartidos al día ✅' :
+    bal>0 ? `${esc(mem('B').display_name)} le debe ${clp(bal)} a ${esc(mem('A').display_name)}` : `${esc(mem('A').display_name)} le debe ${clp(-bal)} a ${esc(mem('B').display_name)}`;
+  const monthName = cap(a.toLocaleDateString('es-CL',{month:'long',year:'numeric'}));
+  $('#main').innerHTML = `
+    <div class="cal-head">
+      <button class="icon-btn" onclick="S.gMonth=new Date(S.gMonth.getFullYear(),S.gMonth.getMonth()-1,1);renderGastos()">‹</button>
+      <h2>${monthName}</h2>
+      <button class="icon-btn" onclick="S.gMonth=new Date(S.gMonth.getFullYear(),S.gMonth.getMonth()+1,1);renderGastos()">›</button>
+    </div>
+    <div class="card">
+      <div class="summary">
+        <div class="box" style="background:${mem('A').color}">${esc(mem('A').display_name)}<b>${clp(tot.A)}</b></div>
+        <div class="box" style="background:${mem('B').color}">${esc(mem('B').display_name)}<b>${clp(tot.B)}</b></div>
+      </div>
+      <div class="balance">${balTxt}</div>
+      <p class="muted" style="font-size:.85rem;margin-bottom:0">Cada casa cubre sus semanas. Marca como "compartido" lo que se divide (terapias, medicamentos, colegio…).</p>
+    </div>
+    <div class="card">${S.expenses.length ? S.expenses.map(e=>`
+      <div class="list-item" onclick="expenseForm('${e.id}')" style="cursor:pointer">
+        <span class="sw" style="background:${mem(e.paid_by).color};margin-top:5px"></span>
+        <div class="grow"><b>${esc(e.description)}</b>
+          <div class="muted" style="font-size:.85rem">${fmtDate(parseYmd(e.spent_on))} · ${ECATS[e.category]}${e.shared?` · compartido ${e.share_a_pct}/${100-e.share_a_pct}${e.settled?' ✅':''}`:''}${e.receipt_path?' · 📎':''}</div></div>
+        <span class="amount">${clp(e.amount)}</span></div>`).join('') : '<p class="muted">Sin gastos este mes.</p>'}</div>`;
+}
+async function expenseForm(id){
+  const e = id ? await run(sb.from('expenses').select('*').eq('id',id).single()) : null;
+  openSheet(`<h3>${e?'Editar gasto':'Nuevo gasto'}</h3>
+    <label>Monto (CLP)</label><input id="x-amt" type="number" inputmode="numeric" value="${e?.amount??''}" placeholder="25000">
+    <label>Descripción</label><input id="x-desc" value="${esc(e?.description)}" placeholder="Sesión fonoaudiología">
+    <div class="row"><div class="grow"><label>Fecha</label><input id="x-date" type="date" value="${e?.spent_on||ymd(new Date())}"></div>
+    <div class="grow"><label>Categoría</label><select id="x-cat">${Object.entries(ECATS).map(([k,v])=>`<option value="${k}" ${e?.category===k?'selected':''}>${v}</option>`).join('')}</select></div></div>
+    <label>Pagó</label><select id="x-paid">
+      <option value="A" ${(e?e.paid_by:S.me.side)==='A'?'selected':''}>${esc(mem('A').display_name)}</option>
+      <option value="B" ${(e?e.paid_by:S.me.side)==='B'?'selected':''}>${esc(mem('B').display_name)}</option></select>
+    <label class="check"><input type="checkbox" id="x-shared" ${e?.shared?'checked':''} onchange="$('#x-split').classList.toggle('hidden',!this.checked)"> Gasto compartido</label>
+    <div id="x-split" class="${e?.shared?'':'hidden'}">
+      <label>Parte de ${esc(mem('A').display_name)}: <span id="x-pctv">${e?.share_a_pct??50}</span>%</label>
+      <input id="x-pct" type="range" min="0" max="100" step="5" value="${e?.share_a_pct??50}" oninput="$('#x-pctv').textContent=this.value">
+      ${e?`<label class="check"><input type="checkbox" id="x-settled" ${e.settled?'checked':''}> Ya se saldó</label>`:''}
+    </div>
+    <label>Comprobante (foto o PDF)</label><input id="x-file" type="file" accept="image/*,application/pdf" capture="environment">
+    ${e?.receipt_path?`<button class="btn ghost small" style="margin-top:8px" onclick="openReceipt('${esc(e.receipt_path)}')">Ver comprobante actual</button>`:''}
+    <div class="row" style="margin-top:14px">
+      ${e?`<button class="btn danger" onclick="delExpense('${e.id}')">Eliminar</button>`:''}
+      <span class="grow"></span><button class="btn" id="x-save" onclick="saveExpense(${e?`'${e.id}'`:'null'})">Guardar</button></div>`);
+}
+async function saveExpense(id){
+  const amount = Number($('#x-amt').value), description = $('#x-desc').value.trim();
+  if(!amount || !description) return toast('Falta monto o descripción');
+  $('#x-save').disabled = true;
+  const row = { family_id:S.fam.id, amount, description, spent_on:$('#x-date').value, category:$('#x-cat').value, paid_by:$('#x-paid').value, shared:$('#x-shared').checked, share_a_pct:+$('#x-pct').value };
+  if($('#x-settled')) row.settled = $('#x-settled').checked;
+  const f = $('#x-file').files[0];
+  try{
+    if(f){
+      const path = `${S.fam.id}/${Date.now()}-${f.name.replace(/[^\w.\-]/g,'_')}`;
+      await run(sb.storage.from('receipts').upload(path, f, { contentType: f.type }));
+      row.receipt_path = path;
+    }
+    if(id) await run(sb.from('expenses').update(row).eq('id',id)); else await run(sb.from('expenses').insert(row));
+    closeSheet(); renderGastos(); toast('Guardado');
+  } finally { const b=$('#x-save'); if(b) b.disabled=false; }
+}
+async function openReceipt(path){ const d = await run(sb.storage.from('receipts').createSignedUrl(path, 300)); window.open(d.signedUrl,'_blank'); }
+async function delExpense(id){ if(!confirm('¿Eliminar este gasto?')) return; await run(sb.from('expenses').delete().eq('id',id)); closeSheet(); renderGastos(); }
+
+// ====== FICHA ======
+async function renderFicha(){
+  S.items = await run(sb.from('profile_items').select('*').eq('family_id',S.fam.id).order('sort').order('updated_at'));
+  const age = S.fam.child_birthdate ? Math.floor(daysBetween(parseYmd(S.fam.child_birthdate), new Date())/365.25) : null;
+  let html = `<div class="card"><b style="font-size:1.1rem">${esc(S.fam.child_name)}</b>${age!==null?` <span class="muted">· ${age} años</span>`:''}
+    <p class="muted" style="margin-bottom:0;font-size:.9rem">Información que ambas casas deben tener a mano: medicamentos, rutinas, qué lo calma, qué lo desregula, contactos.</p></div>`;
+  for(const [k,v] of Object.entries(KINDS)){
+    const its = S.items.filter(i=>i.kind===k);
+    html += `<div class="kind-h">${v}</div><div class="card" style="margin-top:6px">${its.length ? its.map(i=>`
+      <div class="list-item" onclick="itemForm('${i.id}')" style="cursor:pointer"><div class="grow"><b>${esc(i.title)}</b>
+      ${i.detail?`<div class="muted" style="white-space:pre-wrap;font-size:.9rem">${esc(i.detail)}</div>`:''}</div></div>`).join('')
+      : `<button class="btn ghost small" onclick="itemForm(null,'${k}')">+ Agregar</button>`}</div>`;
+  }
+  $('#main').innerHTML = html;
+}
+function itemForm(id, kind){
+  const i = id ? S.items.find(x=>x.id===id) : null;
+  openSheet(`<h3>${i?'Editar':'Agregar a la ficha'}</h3>
+    <label>Sección</label><select id="i-kind">${Object.entries(KINDS).map(([k,v])=>`<option value="${k}" ${(i?.kind||kind)===k?'selected':''}>${v}</option>`).join('')}</select>
+    <label>Título</label><input id="i-title" value="${esc(i?.title)}" placeholder="Ej: Antes de dormir">
+    <label>Detalle</label><textarea id="i-detail" placeholder="Dosis y horario, teléfono, qué hacer…">${esc(i?.detail)}</textarea>
+    <div class="row" style="margin-top:14px">${i?`<button class="btn danger" onclick="delItem('${i.id}')">Eliminar</button>`:''}
+    <span class="grow"></span><button class="btn" onclick="saveItem(${i?`'${i.id}'`:'null'})">Guardar</button></div>`);
+}
+async function saveItem(id){
+  const title = $('#i-title').value.trim(); if(!title) return toast('Falta el título');
+  const row = { family_id:S.fam.id, kind:$('#i-kind').value, title, detail:$('#i-detail').value.trim()||null, updated_at:new Date().toISOString() };
+  if(id) await run(sb.from('profile_items').update(row).eq('id',id)); else await run(sb.from('profile_items').insert(row));
+  closeSheet(); renderFicha();
+}
+async function delItem(id){ if(!confirm('¿Eliminar?')) return; await run(sb.from('profile_items').delete().eq('id',id)); closeSheet(); renderFicha(); }
+
+// ====== BITÁCORA ======
+async function renderLog(){
+  S.log = await run(sb.from('logbook').select('*').eq('family_id',S.fam.id).order('entry_date',{ascending:false}).order('created_at',{ascending:false}).limit(60));
+  $('#main').innerHTML = `<p class="muted" style="margin:12px 0 0">Notas cortas de cómo va la semana: sueño, ánimo, crisis, logros. Ayuda mucho en el traspaso.</p>
+    ${S.log.length ? S.log.map(l=>`<div class="card" onclick="logForm('${l.id}')" style="cursor:pointer">
+      <div class="row"><span style="font-size:1.4rem">${l.mood?MOODS[l.mood-1]:'📝'}</span>
+      <div class="grow"><b>${fmtDate(parseYmd(l.entry_date),{weekday:'long',day:'numeric',month:'short'})}</b>
+      <div class="muted" style="font-size:.82rem">${esc(l.author_side?mem(l.author_side).display_name:'')}</div></div></div>
+      <p style="white-space:pre-wrap;margin:8px 0 0">${esc(l.body)}</p></div>`).join('') : '<div class="card muted">Aún no hay notas.</div>'}`;
+}
+function logForm(id){
+  const l = id ? S.log.find(x=>x.id===id) : null;
+  if(l && l.author!==S.user.id) return;
+  let mood = l?.mood || 0;
+  openSheet(`<h3>${l?'Editar nota':'Nueva nota'}</h3>
+    <label>Fecha</label><input id="l-date" type="date" value="${l?.entry_date||ymd(new Date())}">
+    <label>¿Cómo estuvo?</label><div class="moods">${MOODS.map((m,i)=>`<button type="button" data-m="${i+1}" class="${mood===i+1?'on':''}">${m}</button>`).join('')}</div>
+    <label>Nota</label><textarea id="l-body" placeholder="Durmió bien, estuvo tranquilo en el colegio…">${esc(l?.body)}</textarea>
+    <div class="row" style="margin-top:14px">${l?`<button class="btn danger" onclick="delLog('${l.id}')">Eliminar</button>`:''}
+    <span class="grow"></span><button class="btn" id="l-save">Guardar</button></div>`);
+  document.querySelectorAll('.moods button').forEach(b=>b.onclick=()=>{ mood=+b.dataset.m; document.querySelectorAll('.moods button').forEach(x=>x.classList.toggle('on',x===b)); });
+  $('#l-save').onclick = async () => {
+    const body = $('#l-body').value.trim(); if(!body) return toast('Escribe algo');
+    const row = { family_id:S.fam.id, entry_date:$('#l-date').value, mood:mood||null, body, author_side:S.me.side };
+    if(l) await run(sb.from('logbook').update(row).eq('id',l.id)); else await run(sb.from('logbook').insert(row));
+    closeSheet(); renderLog();
+  };
+}
+async function delLog(id){ if(!confirm('¿Eliminar nota?')) return; await run(sb.from('logbook').delete().eq('id',id)); closeSheet(); renderLog(); }
+
+// ====== AJUSTES ======
+function renderAjustes(){
+  const o = S.other;
+  $('#main').innerHTML = `
+    <div class="card"><b>Tú</b>
+      <label>Nombre</label><input id="a-name" value="${esc(S.me.display_name)}">
+      <label>Color</label><input id="a-color" type="color" value="${S.me.color}">
+      <button class="btn small" style="margin-top:10px" onclick="saveMe()">Guardar</button>
+      <p class="muted" style="font-size:.85rem">${esc(S.user.email)}</p></div>
+    <div class="card"><b>Otra casa</b>
+      ${o ? `<p>${esc(o.display_name)} · ${esc(o.email)} ${o.user_id?'<span style="color:var(--ok)">✔ conectada</span>':'<span class="muted">(invitación pendiente)</span>'}</p>` : '<p class="muted">Aún no has invitado a nadie.</p>'}
+      ${o && !o.user_id && o.invite_code ? `<p>Código: <b style="letter-spacing:.15em;font-size:1.2rem">${esc(o.invite_code)}</b> <button class="btn ghost small" onclick="shareInvite('${esc(o.invite_code)}')">Compartir</button></p>` : ''}
+      ${!o || !o.user_id ? `<label>Correo</label><input id="a-oemail" type="email" value="${esc(o?.email)}">
+      <label>Nombre</label><input id="a-oname" value="${esc(o?.display_name||'')}" placeholder="Mamá">
+      <label>Color</label><input id="a-ocolor" type="color" value="${o?.color||'#db2777'}">
+      <button class="btn small" style="margin-top:10px" onclick="invite()">${o?'Generar código nuevo':'Crear invitación'}</button>
+      <p class="muted" style="font-size:.85rem">Debe crear su cuenta con ese correo y escribir el código.</p>` : ''}</div>
+    <div class="card"><b>Semanas</b>
+      <label>Día de cambio de casa</label><select id="a-swap">${DOW.map((d,i)=>`<option value="${i}" ${i===S.fam.swap_weekday?'selected':''}>${d}</option>`).join('')}</select>
+      <label>Esta semana está con</label><select id="a-now"><option value="A" ${sideOf(new Date())==='A'?'selected':''}>${esc(mem('A').display_name)}</option><option value="B" ${sideOf(new Date())==='B'?'selected':''}>${esc(mem('B').display_name)}</option></select>
+      <label>Fecha de nacimiento</label><input id="a-birth" type="date" value="${S.fam.child_birthdate||''}">
+      <button class="btn small" style="margin-top:10px" onclick="saveWeeks()">Guardar</button></div>
+    <button class="btn ghost" style="width:100%;margin-bottom:20px" onclick="logout()">Cerrar sesión</button>`;
+}
+async function saveMe(){ await run(sb.from('family_members').update({display_name:$('#a-name').value.trim()||S.me.display_name, color:$('#a-color').value}).eq('id',S.me.id)); await loadFamily(S.fam.id); toast('Guardado'); renderAjustes(); }
+async function invite(){ const em=$('#a-oemail').value.trim(); if(!em) return toast('Falta el correo'); const code = await run(sb.rpc('invite_member',{p_family:S.fam.id,p_email:em,p_name:$('#a-oname').value.trim()||'Otra casa',p_color:$('#a-ocolor').value})); await loadFamily(S.fam.id); renderAjustes(); showCode(code); }
+async function saveWeeks(){
+  const wd = +$('#a-swap').value; let anchor = weekStart(new Date(), wd);
+  if($('#a-now').value==='B') anchor = addDays(anchor,7);
+  await run(sb.from('families').update({swap_weekday:wd, anchor_date:ymd(anchor), child_birthdate:$('#a-birth').value||null}).eq('id',S.fam.id));
+  await loadFamily(S.fam.id); toast('Guardado'); renderAjustes();
+}
+
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+boot();
+</script>
+</body>
+</html>
